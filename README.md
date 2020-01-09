@@ -19,5 +19,6 @@ go run ./ -o=create -n=my-new-migration-file
 2. Open the newly created migration file to edit the query
 
 ## To Run A Migration File
-1. Run `go run ./ -o=run -n=my-migration-file`
+1. Run `go run ./ -o=run -n=my-migration-file` to migrate a single file
+2. Run `go run ./ -o=run` to migrate all files
 
