@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -32,6 +34,8 @@ func main() {
 	if operation == "run" || operation == "r" {
 		if fileName != "" {
 			RunMigration(fileName)
+		} else {
+			RunMigrations()
 		}
 		return
 	}
@@ -49,7 +53,13 @@ func CreateFile(fileName string) {
 }
 
 func RunMigration(fileName string) {
-	err := migrator.Prepare(fileName)
+	// setup database
+	err := SetupDatabase()
+	if err != nil {
+		log.Fatalf("Error occured while setting up database: %v", err)
+	}
+
+	err = migrator.Prepare(fileName)
 	if err != nil {
 		log.Fatalf("Error occured while preparing migration: %v", err)
 
@@ -58,5 +68,37 @@ func RunMigration(fileName string) {
 	err = migrator.RunMigration(fileName)
 	if err != nil {
 		log.Fatalf("Error occured while running migration: %v", err)
+	}
+}
+
+func RunMigrations() {
+	migrationList, err := GetMigrationList()
+	if err != nil {
+		log.Fatalf("Error occured while fetching migration list: %v", err)
+	}
+
+	if len(migrationList) == 0 {
+		log.Fatal("No migration available")
+	}
+
+	err = SetupDatabase()
+	if err != nil {
+		log.Fatalf("Error occured while setting up database: %v", err)
+	}
+
+	for _, migration := range migrationList {
+		// remove the extension attached to the name
+		migrationName := strings.Split(migration, ".")[0]
+
+		err = migrator.Prepare(migrationName)
+		if err != nil {
+			fmt.Printf("Error occured while preparing migration: %v \n", err)
+			continue
+		}
+
+		err = migrator.RunMigration(migrationName)
+		if err != nil {
+			fmt.Printf("Error occured while running migration: %v \n", err)
+		}
 	}
 }

@@ -2,12 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"plugin"
+	"sort"
 	"strconv"
 	"time"
 
@@ -20,7 +20,7 @@ var db *sql.DB
 
 func (migrator *Migrator) CreateMigrationFile(fileName string) error {
 	/* TODO - VALIDATE THE FILENAME HAS ONLY ALPHABETS AND HYPHENS */
-	filePath := fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, MIGRATION_TEMPLATE_NAME, GO_EXT)
+	filePath := fmt.Sprintf(FILE_PATH, TEMPLATE_FOLDER_PATH, MIGRATION_TEMPLATE_NAME, GO_EXT)
 	migrationFile, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -44,12 +44,6 @@ func (migrator *Migrator) Prepare(fileName string) error {
 		return err
 	}
 
-	// setup database
-	err = SetupDatabase()
-	if err != nil {
-		return err
-	}
-
 	//check if it has been migrated before
 	isMigrated, err := CheckMigrationExistsInDB(fileName)
 	if err != nil {
@@ -57,7 +51,8 @@ func (migrator *Migrator) Prepare(fileName string) error {
 	}
 
 	if isMigrated {
-		return errors.New("Migration already exists in the DB")
+		errorMessage := "Migration %s already exists in the DB \n"
+		return fmt.Errorf(errorMessage, fileName)
 	}
 
 	// create migration plugin
@@ -70,7 +65,7 @@ func (migrator *Migrator) Prepare(fileName string) error {
 }
 
 func (migrator *Migrator) RunMigration(fileName string) error {
-	filePath := fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, fileName, PLUGIN_EXT)
+	filePath := fmt.Sprintf(FILE_PATH, PLUGIN_FOLDER_PATH, fileName, PLUGIN_EXT)
 	migrationPlugin, err := plugin.Open(filePath)
 	if err != nil {
 		return err
@@ -91,7 +86,7 @@ func (migrator *Migrator) RunMigration(fileName string) error {
 		return err
 	}
 
-	fmt.Printf("%s was successfully migrated", fileName)
+	fmt.Printf("%s was successfully migrated \n", fileName)
 
 	return nil
 }
@@ -117,7 +112,7 @@ func CreateMigrationPlugins(migrationNames []string) []string {
 	for _, migrationName := range migrationNames {
 		name, err := CreateMigrationPlugin(migrationName)
 		if err != nil {
-			fmt.Printf("Create Plugin Failed: %s", err)
+			fmt.Printf("Create Plugin Failed: %s \n", err)
 		} else {
 			createdMigrations = append(createdMigrations, name)
 		}
@@ -128,7 +123,7 @@ func CreateMigrationPlugins(migrationNames []string) []string {
 
 func CreateMigrationPlugin(migrationName string) (string, error) {
 	buildMode := "-buildmode=plugin"
-	outputPath := fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, migrationName, PLUGIN_EXT)
+	outputPath := fmt.Sprintf(FILE_PATH, PLUGIN_FOLDER_PATH, migrationName, PLUGIN_EXT)
 	outputFlag := "-o=" + outputPath
 	filePath := fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, migrationName, GO_EXT)
 	cmd := exec.Command("go", "build", buildMode, outputFlag, filePath)
@@ -191,4 +186,16 @@ func CheckMigrationExistsInDB(migrationName string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func GetMigrationList() ([]string, error) {
+	file, err := os.Open(MIGRATION_FOLDER_PATH)
+	migrations, err := file.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(migrations)
+
+	return migrations, nil
 }
