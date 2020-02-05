@@ -17,3 +17,11 @@ func UP(db *sql.DB) error {
 
 	return err
 }
+
+func DOWN(db *sql.DB) error {
+	var query = `DROP TABLE IF EXISTS MIGRATIONS_TABLE_NAME;`
+
+	_, err := db.Exec(query)
+
+	return err
+}
