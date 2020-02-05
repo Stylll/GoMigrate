@@ -8,6 +8,7 @@ go run ./ -o=create -n=my-new-migration-file
 1. -o: (Required) To set the operation to perform. Values that can be parsed are:
 - `c or create` to create a new migration file
 - `r or run` to run a migration file or run all migration files
+- `u or undo` to undo migration file(s)
 
 2. -n: To set the name of the file
 
@@ -21,4 +22,8 @@ go run ./ -o=create -n=my-new-migration-file
 ## To Run A Migration File
 1. Run `go run ./ -o=run -n=my-migration-file` to migrate a single file
 2. Run `go run ./ -o=run` to migrate all files
+
+## To Undo Migration
+1. Run `go run ./ -o=undo -n=my-migration-file` to undo up to a specific migration file
+1. Run `go run ./ -o=undo` to undo all migrations
 

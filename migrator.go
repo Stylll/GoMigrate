@@ -64,6 +64,34 @@ func (migrator *Migrator) Prepare(fileName string) error {
 	return nil
 }
 
+func (migrator *Migrator) PrepareUndo(fileName string) error {
+	// check if file exists
+	filePath := fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, fileName, GO_EXT)
+	_, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	//check if it has been migrated before
+	isMigrated, err := CheckMigrationExistsInDB(fileName)
+	if err != nil {
+		return err
+	}
+
+	if !isMigrated {
+		errorMessage := "Migration %s doesn't exist in the DB \n"
+		return fmt.Errorf(errorMessage, fileName)
+	}
+
+	// create migration plugin
+	_, err = CreateMigrationPlugin(fileName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (migrator *Migrator) RunMigration(fileName string) error {
 	filePath := fmt.Sprintf(FILE_PATH, PLUGIN_FOLDER_PATH, fileName, PLUGIN_EXT)
 	migrationPlugin, err := plugin.Open(filePath)
@@ -91,11 +119,52 @@ func (migrator *Migrator) RunMigration(fileName string) error {
 	return nil
 }
 
+func (migrator *Migrator) UndoMigration(fileName string) error {
+	filePath := fmt.Sprintf(FILE_PATH, PLUGIN_FOLDER_PATH, fileName, PLUGIN_EXT)
+	migrationPlugin, err := plugin.Open(filePath)
+	if err != nil {
+		return err
+	}
+
+	down, err := migrationPlugin.Lookup("DOWN")
+	if err != nil {
+		return err
+	}
+
+	err = down.(func(*sql.DB) error)(db)
+	if err != nil {
+		return err
+	}
+
+	err = migrator.RemoveMigrationFileFromDB(fileName)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s was successfully reversed \n", fileName)
+
+	return nil
+}
+
 func (migrator *Migrator) SaveMigratedFileInDB(fileName string) error {
 	fullFileName := fileName + "." + GO_EXT
 	query := `INSERT INTO migrations (
 		migration_name
 	) VALUES ($1) `
+
+	row, err := db.Query(query, fullFileName)
+	defer row.Close()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (migrator *Migrator) RemoveMigrationFileFromDB(fileName string) error {
+	fullFileName := fileName + "." + GO_EXT
+	query := `DELETE FROM migrations WHERE migration_name = $1;`
 
 	row, err := db.Query(query, fullFileName)
 	defer row.Close()
@@ -198,4 +267,14 @@ func GetMigrationList() ([]string, error) {
 	sort.Strings(migrations)
 
 	return migrations, nil
+}
+
+func FindStringIndex(slice []string, stringToFind string) int {
+	for i, item := range slice {
+		if item == stringToFind {
+			return i
+		}
+	}
+
+	return -1
 }
