@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 
@@ -11,6 +13,7 @@ import (
 )
 
 var migrator Migrator
+var config Config
 
 func main() {
 	godotenv.Load()
@@ -19,6 +22,11 @@ func main() {
 	flag.StringVar(&fileName, "n", "", "migration file name")
 
 	flag.Parse()
+
+	err := SetupConfig()
+	if err != nil {
+		log.Fatalf("Error(s) occurred \n %v", err)
+	}
 
 	if operation == "" {
 		log.Fatal("flag 'o':'operation' was not provided")
@@ -177,4 +185,42 @@ func UndoMigration(migrationName string) {
 	}
 
 	fmt.Printf("%d Migration(s) Reversed \n", reversedMigrationsCount)
+}
+
+func SetupConfig() error {
+	migrationFolderPath := os.Getenv("MIGRATION_FOLDER_PATH")
+	migrationTemplateName := os.Getenv("MIGRATION_TEMPLATE_NAME")
+	pluginFolderPath := os.Getenv("PLUGIN_FOLDER_PATH")
+	templateFolderPath := os.Getenv("TEMPLATE_FOLDER_PATH")
+
+	errMessage := ""
+
+	if migrationFolderPath == "" {
+		errMessage = errMessage + "MIGRATION_FOLDER_PATH is not set in the environment \n"
+	}
+
+	if migrationTemplateName == "" {
+		errMessage = errMessage + "MIGRATION_TEMPLATE_NAME is not set in the environment \n"
+	}
+
+	if pluginFolderPath == "" {
+		errMessage = errMessage + "PLUGIN_FOLDER_PATH is not set in the environment \n"
+	}
+
+	if templateFolderPath == "" {
+		errMessage = errMessage + "TEMPLATE_FOLDER_PATH is not set in the environment \n"
+	}
+
+	if errMessage != "" {
+		err := errors.New(errMessage)
+
+		return err
+	}
+
+	config.MIGRATION_FOLDER_PATH = migrationFolderPath
+	config.MIGRATION_TEMPLATE_NAME = migrationTemplateName
+	config.PLUGIN_FOLDER_PATH = pluginFolderPath
+	config.TEMPLATE_FOLDER_PATH = templateFolderPath
+
+	return nil
 }

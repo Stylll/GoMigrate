@@ -14,20 +14,18 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Migrator struct{}
-
 var db *sql.DB
 
 func (migrator *Migrator) CreateMigrationFile(fileName string) error {
 	/* TODO - VALIDATE THE FILENAME HAS ONLY ALPHABETS AND HYPHENS */
-	filePath := fmt.Sprintf(FILE_PATH, TEMPLATE_FOLDER_PATH, MIGRATION_TEMPLATE_NAME, GO_EXT)
+	filePath := fmt.Sprintf(FILE_PATH, config.TEMPLATE_FOLDER_PATH, config.MIGRATION_TEMPLATE_NAME, GO_EXT)
 	migrationFile, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 	currentTimeStamp := time.Now().Unix()
 	fileName = strconv.FormatInt(currentTimeStamp, 10) + "-" + fileName
-	filePath = fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, fileName, GO_EXT)
+	filePath = fmt.Sprintf(FILE_PATH, config.MIGRATION_FOLDER_PATH, fileName, GO_EXT)
 	err = ioutil.WriteFile(filePath, migrationFile, 0644)
 	if err != nil {
 		return err
@@ -38,7 +36,7 @@ func (migrator *Migrator) CreateMigrationFile(fileName string) error {
 
 func (migrator *Migrator) Prepare(fileName string) error {
 	// check if file exists
-	filePath := fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, fileName, GO_EXT)
+	filePath := fmt.Sprintf(FILE_PATH, config.MIGRATION_FOLDER_PATH, fileName, GO_EXT)
 	_, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -66,7 +64,7 @@ func (migrator *Migrator) Prepare(fileName string) error {
 
 func (migrator *Migrator) PrepareUndo(fileName string) error {
 	// check if file exists
-	filePath := fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, fileName, GO_EXT)
+	filePath := fmt.Sprintf(FILE_PATH, config.MIGRATION_FOLDER_PATH, fileName, GO_EXT)
 	_, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -93,7 +91,7 @@ func (migrator *Migrator) PrepareUndo(fileName string) error {
 }
 
 func (migrator *Migrator) RunMigration(fileName string) error {
-	filePath := fmt.Sprintf(FILE_PATH, PLUGIN_FOLDER_PATH, fileName, PLUGIN_EXT)
+	filePath := fmt.Sprintf(FILE_PATH, config.PLUGIN_FOLDER_PATH, fileName, PLUGIN_EXT)
 	migrationPlugin, err := plugin.Open(filePath)
 	if err != nil {
 		return err
@@ -120,7 +118,7 @@ func (migrator *Migrator) RunMigration(fileName string) error {
 }
 
 func (migrator *Migrator) UndoMigration(fileName string) error {
-	filePath := fmt.Sprintf(FILE_PATH, PLUGIN_FOLDER_PATH, fileName, PLUGIN_EXT)
+	filePath := fmt.Sprintf(FILE_PATH, config.PLUGIN_FOLDER_PATH, fileName, PLUGIN_EXT)
 	migrationPlugin, err := plugin.Open(filePath)
 	if err != nil {
 		return err
@@ -192,9 +190,9 @@ func CreateMigrationPlugins(migrationNames []string) []string {
 
 func CreateMigrationPlugin(migrationName string) (string, error) {
 	buildMode := "-buildmode=plugin"
-	outputPath := fmt.Sprintf(FILE_PATH, PLUGIN_FOLDER_PATH, migrationName, PLUGIN_EXT)
+	outputPath := fmt.Sprintf(FILE_PATH, config.PLUGIN_FOLDER_PATH, migrationName, PLUGIN_EXT)
 	outputFlag := "-o=" + outputPath
-	filePath := fmt.Sprintf(FILE_PATH, MIGRATION_FOLDER_PATH, migrationName, GO_EXT)
+	filePath := fmt.Sprintf(FILE_PATH, config.MIGRATION_FOLDER_PATH, migrationName, GO_EXT)
 	cmd := exec.Command("go", "build", buildMode, outputFlag, filePath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -258,7 +256,7 @@ func CheckMigrationExistsInDB(migrationName string) (bool, error) {
 }
 
 func GetMigrationList() ([]string, error) {
-	file, err := os.Open(MIGRATION_FOLDER_PATH)
+	file, err := os.Open(config.MIGRATION_FOLDER_PATH)
 	migrations, err := file.Readdirnames(-1)
 	if err != nil {
 		return nil, err
